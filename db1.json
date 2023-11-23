@@ -1,0 +1,26 @@
+{
+  "components": [
+    {
+      "id": "ms-sql",
+      "group": "Databases",
+      "name": "MS-SQL",
+      "url": "http://localhost:8100/ms_sql.html",
+      "author": "Hau Tran",
+      "icon": "ti ti-database",
+      "color": "",
+      "version": "1",
+      "readme": "hehe"
+    },
+    {
+      "id": "oracle-sql",
+      "group": "Databases",
+      "name": "Oracle-SQL",
+      "url": "http://localhost:8100/oracle_sql.html",
+      "author": "Hau Tran",
+      "icon": "ti ti-database",
+      "color": "",
+      "version": "1",
+      "readme": "hehe"
+    }
+  ]
+}

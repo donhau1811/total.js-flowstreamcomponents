@@ -1,0 +1,140 @@
+<script total>
+  exports.name = "Oracle";
+  exports.group = "Databases";
+  exports.icon = "ti ti-database";
+  exports.author = "Hau Tran";
+  exports.version = "1";
+  exports.config = {};
+  exports.inputs = [{ id: "input", name: "Input" }];
+  exports.outputs = [{ id: "output", name: "Output" }];
+  exports.npm = ["oracledb"];
+  exports.POOLS = {};
+
+  exports.make = function (instance, config) {
+    const oracledb = require("oracledb");
+    var Oracle;
+
+    instance.message = function ($) {
+      var data = $.data;
+
+      if (!Oracle || !Oracle.pool)
+        return $.send("output", { error: "Oracle connection not configured" });
+
+      Oracle.pool.getConnection((err, connection) => {
+        if (err) return $.send("output", { error: err.message });
+
+        connection.execute(
+          data,
+          [],
+          { outFormat: oracledb.OUT_FORMAT_OBJECT },
+          (err, result) => {
+            if (err) {
+              connection.release();
+              return $.send("output", { error: err.message });
+            }
+
+            var { rows, outBinds } = result;
+            connection.release();
+            $.send("output", { rows, outBinds });
+          }
+        );
+      });
+    };
+
+    instance.configure = function () {
+      if (
+        !config.connectString ||
+        (Oracle && Oracle.connectString === config.connectString)
+      )
+        return;
+
+      instance.close();
+
+      if (exports.POOLS[config.connectString]) {
+        Oracle = exports.POOLS[config.connectString];
+        Oracle.count++;
+        return;
+      }
+
+      oracledb.createPool(
+        {
+          user: config.user,
+          password: config.password,
+          connectString: config.connectString,
+          poolMin: 1,
+          poolMax: 10,
+          poolIncrement: 1,
+        },
+        (err, pool) => {
+          if (err) {
+            instance.throw(err.message);
+            return;
+          }
+
+          Oracle = exports.POOLS[config.connectString] = {
+            pool,
+            count: 1,
+            connectString: config.connectString,
+          };
+        }
+      );
+    };
+
+    instance.close = function () {
+      if (Oracle) {
+        Oracle.count--;
+        if (Oracle.count === 0) {
+          Oracle.pool.close();
+          delete exports.POOLS[config.connectString];
+        }
+        Oracle = null;
+      }
+    };
+
+    instance.configure();
+  };
+</script>
+
+<readme>
+  Oracle ## Input Expected data: ```javascript { query: 'SELECT * FROM tblname'
+  } ```
+</readme>
+
+<settings>
+  <div class="padding">
+    <div class="row m">
+      <div class="col-md-12">
+        <ui-component name="input" path="?.connectString" config="required:1"
+          >Connect String</ui-component
+        >
+        <ui-component name="input" path="?.user" config="required:1"
+          >Username</ui-component
+        >
+        <ui-component
+          name="input"
+          path="?.password"
+          config="required:1"
+          type="password"
+          >Password</ui-component
+        >
+        <!-- <div class="help">e.g.: user/password@localhost/ORCL</div> -->
+      </div>
+    </div>
+  </div>
+</settings>
+
+<style>
+  .CLASS footer {
+    padding: 10px;
+    font-size: 12px;
+  }
+</style>
+
+<script></script>
+
+<body>
+  <header><i class="ICON"></i>NAME</header>
+  <footer>
+    <ui-bind path="STATUS.error" config="text" class="red"></ui-bind>
+  </footer>
+</body>

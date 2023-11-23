@@ -34,6 +34,7 @@ const logFailed = function(test) {
 // Tester
 const tester = {};
 tester.path = './components';
+// tester.path = './public';
 tester.timeout = 5 * 1000;
 tester.inputTests = {};
 tester.tests = {};

@@ -1,0 +1,109 @@
+<script total>
+  exports.name = "MSSQL";
+  exports.group = "Databases";
+  exports.icon = "ti ti-database";
+  exports.author = "Hau Tran";
+  exports.version = "1";
+  exports.config = {};
+  exports.inputs = [{ id: "input", name: "Input" }];
+  exports.outputs = [{ id: "output", name: "Output" }];
+  exports.npm = ["mssql"];
+  exports.POOLS = {};
+
+  exports.make = function (instance, config) {
+    const sql = require("mssql");
+    var MSSQL;
+
+    instance.message = function ($) {
+      var data = $.data;
+
+      if (!MSSQL || !MSSQL.pool)
+        return $.send("output", { error: "MSSQL connection not configured" });
+
+      MSSQL.pool.request().query(data, (err, result) => {
+        if (err) return $.send("output", { error: err.message });
+
+        var { recordset, rowsAffected } = result;
+        $.send("output", { recordset, rowsAffected });
+      });
+    };
+
+    instance.configure = function () {
+      // same connection, ignore
+      if (!config.connection || (MSSQL && MSSQL.string === config.connection))
+        return;
+
+      instance.close();
+
+      // already existing connection, use it
+      if (exports.POOLS[config.connection]) {
+        MSSQL = exports.POOLS[config.connection];
+        MSSQL.count++;
+        return;
+      }
+
+      var pool = new sql.ConnectionPool(config.connection);
+      MSSQL = exports.POOLS[config.connection] = {
+        pool,
+        count: 1,
+        string: config.connection,
+      };
+
+      pool.connect((err) => {
+        if (err) {
+          console.log("[MSSQL] Unexpected error on idle client", err);
+          instance.throw(err.message);
+          return;
+        }
+      });
+    };
+
+    instance.close = function () {
+      if (MSSQL) {
+        MSSQL.count--;
+        if (MSSQL.count === 0) {
+          // last component using this connection so destroy it
+          MSSQL.pool.close();
+          delete exports.POOLS[config.connection];
+        }
+        MSSQL = null;
+      }
+    };
+
+    instance.configure();
+  };
+</script>
+
+<readme>
+  MSSQL ## Input Expected data: ```javascript { query: 'SELECT * FROM tblname;'
+  }
+</readme>
+
+<settings>
+  <div class="padding">
+    <div class="row m">
+      <div class="col-md-12">
+        <ui-component name="input" path="?.connection" config="required:1"
+          >Connection string</ui-component
+        >
+        <!-- <div class="help">e.g.: mssql://user:password@localhost/database</div> -->
+      </div>
+    </div>
+  </div>
+</settings>
+
+<style>
+  .CLASS footer {
+    padding: 10px;
+    font-size: 12px;
+  }
+</style>
+
+<script></script>
+
+<body>
+  <header><i class="ICON"></i>NAME</header>
+  <footer>
+    <ui-bind path="STATUS.error" config="text" class="red"></ui-bind>
+  </footer>
+</body>
